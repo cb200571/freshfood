@@ -1,0 +1,58 @@
+# 测试用例执行计划
+# include: 只执行这里列出的用例（写测试函数真实名称）
+# exclude: 排除这里的用例（优先级高于 include）
+include:
+  - test_register_success
+  - test_register_duplicate
+  - test_login_success
+  - test_login_fail_wrong_password
+  - test_login_fail_userNoExists
+  - test_get_top_categories
+  - test_get_sub_categories
+  - test_list_by_category
+  - test_list_by_parent_category
+  - test_list_all
+  - test_get_skus
+  - test_get_low_stock
+  - test_search
+  - test_product_detail
+  - test_save_product
+  - test_create_order
+  - test_pay_order
+  - test_cancel_order
+  - test_order_list
+  - test_order_detail
+  - test_add_address
+  - test_list_address
+  - test_set_default_address
+  - test_get_default_address
+  - test_update_address
+  - test_delete_address
+  - test_get_stats
+  - test_dashboard_low_stock
+  - test_coupon_list
+  - test_my_coupons
+  - test_seckill_list
+  - test_seckill_active
+  - test_user_admin_list
+  - test_product_update_status
+
+  # ===== 补充的 CRUD 用例 =====
+  - test_send_code
+  - test_check_name
+  - test_update_product
+  - test_update_sku
+  - test_decrease_stock
+  - test_update_stock
+  - test_order_items
+  - test_admin_order_list
+  - test_admin_ship
+  - test_admin_complete
+  - test_create_coupon
+  - test_update_coupon_status
+  - test_issue_coupon
+  - test_create_seckill
+  - test_update_seckill_status
+  - test_reset_seckill
+
+exclude: []

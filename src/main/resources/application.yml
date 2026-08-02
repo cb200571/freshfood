@@ -1,0 +1,49 @@
+#server 模块：内置 Tomcat 容器配置，控制 HTTP 服务并发能力
+server:
+  port: 8081
+  tomcat:
+    threads:
+      max: 500          # 同一时刻最多同时处理 500 个请求
+      min-spare: 20     # 项目启动后常驻 20 个空闲线程，流量突增时不用临时新建线程，减少线程创建销毁开销，降低响应延迟
+    max-connections: 10000  # 最大tcp连接数
+    accept-count: 500       # 大于max后，进入等待队列长度，超过500则拒绝连接
+
+#spring.datasource：MySQL 数据库连接配置
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/fresh_food?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf-8
+    username: root
+    password: 200571
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    #hikari：SpringBoot 默认高性能数据库连接池
+    hikari:
+      maximum-pool-size: 120    # DB连接池最大连接数,同一时间最多 80 个并发 SQL 操作
+      minimum-idle: 20           # 最小空闲连接数
+      connection-timeout: 5000   # 当连接池满了，业务代码去拿数据库连接最多等待 5 秒
+      idle-timeout: 600000       # 闲置超过 10 分钟的数据库连接自动释放，节省数据库服务资源。
+      max-lifetime: 1800000      # 连接最大存活时间（30分钟）
+  #spring.jackson：JSON 序列化 / 反序列化配置
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: false #前端传 JSON 参数里包含实体类不存在的字段时，不抛异常
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 100
+        max-idle: 30
+        min-idle: 10
+        max-wait: 2000ms
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true #自动下划线转驼峰：数据库字段user_name → Java 实体属性userName，不用手动映射。
+    #log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  #打印完整 SQL 日志到控制台
+logging:
+  file:
+    name: logs/spring.log
+  level:
+    root: INFO
+    com.food.freshfood: DEBUG
