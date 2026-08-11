@@ -261,3 +261,35 @@ export const couponApi  = {
     }).then(r => r.json())
   }
 }
+// 购物车 API（后端存储）
+export const cartApi = {
+  // 查询用户购物车
+  list(userId) {
+    return fetch(`${API_BASE}/cart/list?userId=${userId}`).then(r => r.json())
+  },
+
+  // 加购：body 传 {userId, skuId, spuId, quantity}
+  add(data) {
+    return fetch(`${API_BASE}/cart/add`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(r => r.json())
+  },
+
+  // 修改数量：body 传 {id, quantity}
+  update(data) {
+    return fetch(`${API_BASE}/cart/update`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(r => r.json())
+  },
+
+  // 删除购物车项
+  remove(id) {
+    return fetch(`${API_BASE}/cart/delete?id=${id}`, {
+      method: 'DELETE'
+    }).then(r => r.json())
+  }
+}

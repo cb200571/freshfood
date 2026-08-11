@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { productApi } from '@/api'
+import { productApi, cartApi } from '@/api'
 import { useUserStore } from '@/stores/user'
 const route = useRoute()
 const router = useRouter()
@@ -104,34 +104,30 @@ function getRealPrice(sku) {
   return getSeckillPrice(sku) || (sku ? sku.price : 0)
 }
 
-// 加入购物车
-function addToCart() {
+// 加入购物车（调后端接口存储）
+async function addToCart() {
   if (!selectedSku.value) return
-  const cart = JSON.parse(localStorage.getItem('cart') || '[]')
-  const realPrice = getRealPrice(selectedSku.value)
-  // 检查是否已有相同 SKU（区分秒杀和非秒杀）
-  const key = seckillActivityId.value ? `sk_${selectedSku.value.id}` : `${selectedSku.value.id}`
-  const existing = cart.find(item => item._cartKey === key)
-  if (existing) {
-    existing.quantity += quantity.value
-  } else {
-    cart.push({
-      _cartKey: key,
-      skuId: selectedSku.value.id,
-      spuId: product.value.id,
-      name: product.value.name,
-      skuName: selectedSku.value.skuName,
-      image: selectedSku.value.image || product.value.mainImage,
-      price: realPrice,
-      quantity: quantity.value,
-      seckillActivityId: seckillActivityId.value
-    })
+  // 未登录用户提示先登录
+  if (!userStore.userId) {
+    alert('请先登录')
+    router.push('/login')
+    return
   }
-  localStorage.setItem('cart', JSON.stringify(cart))
-  showSpecModal.value = false
-  const goToCart = confirm('✅ 已加入购物车，是否去购物车查看？')
-  if (goToCart) {
-    router.push('/cart')
+  // 调后端加购接口
+  const res = await cartApi.add({
+    userId: userStore.userId,
+    skuId: selectedSku.value.id,
+    spuId: product.value.id,
+    quantity: quantity.value
+  })
+  if (res.code === 200) {
+    showSpecModal.value = false
+    const goToCart = confirm('✅ 已加入购物车，是否去购物车查看？')
+    if (goToCart) {
+      router.push('/cart')
+    }
+  } else {
+    alert('加入购物车失败：' + (res.message || '未知错误'))
   }
 }
 

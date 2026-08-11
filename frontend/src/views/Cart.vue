@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { cartApi } from '@/api'
 import TabBar from '@/components/TabBar.vue'
 
 const router = useRouter()
@@ -31,15 +32,21 @@ const selectedCount = computed(() => {
   return selectedItems.value.reduce((sum, item) => sum + item.quantity, 0)
 })
 
-// 加载购物车数据
-function loadCart() {
+// 加载购物车数据（从后端接口拉取）
+async function loadCart() {
   loading.value = true
   try {
-    const savedCart = localStorage.getItem('cart')
-    if (savedCart) {
-      const parsed = JSON.parse(savedCart)
+    // 未登录用户购物车为空
+    if (!user.userId) {
+      cartItems.value = []
+      updateAllSelected()
+      loading.value = false
+      return
+    }
+    const res = await cartApi.list(user.userId)
+    if (res.code === 200) {
       // 给每个商品添加 selected 状态，默认选中
-      cartItems.value = parsed.map(item => ({
+      cartItems.value = (res.data || []).map(item => ({
         ...item,
         selected: true
       }))
@@ -53,13 +60,6 @@ function loadCart() {
   } finally {
     loading.value = false
   }
-}
-
-// 保存购物车到 localStorage
-function saveCart() {
-  // 保存时不包含 selected 状态
-  const toSave = cartItems.value.map(({ selected, ...rest }) => rest)
-  localStorage.setItem('cart', JSON.stringify(toSave))
 }
 
 // 切换单个商品选中状态
@@ -81,36 +81,51 @@ function updateAllSelected() {
   isAllSelected.value = cartItems.value.length > 0 && cartItems.value.every(item => item.selected)
 }
 
-// 增加数量
-function increaseQuantity(item) {
+// 增加数量（调后端接口）
+async function increaseQuantity(item) {
   if (item.quantity < 99) {
-    item.quantity++
-    saveCart()
+    const res = await cartApi.update({ id: item.id, quantity: 1 })
+    if (res.code === 200) {
+      item.quantity++
+    } else {
+      alert('修改失败：' + (res.message || '未知错误'))
+    }
   }
 }
 
-// 减少数量
-function decreaseQuantity(item) {
+// 减少数量（调后端接口）
+async function decreaseQuantity(item) {
   if (item.quantity > 1) {
-    item.quantity--
-    saveCart()
+    const res = await cartApi.update({ id: item.id, quantity: -1 })
+    if (res.code === 200) {
+      item.quantity--
+    } else {
+      alert('修改失败：' + (res.message || '未知错误'))
+    }
   }
 }
 
-// 删除商品
-function removeItem(index) {
+// 删除商品（调后端接口）
+async function removeItem(index) {
   if (confirm('确定要删除这个商品吗？')) {
-    cartItems.value.splice(index, 1)
-    saveCart()
-    updateAllSelected()
+    const item = cartItems.value[index]
+    const res = await cartApi.remove(item.id)
+    if (res.code === 200) {
+      cartItems.value.splice(index, 1)
+      updateAllSelected()
+    } else {
+      alert('删除失败：' + (res.message || '未知错误'))
+    }
   }
 }
 
-// 清空购物车
-function clearCart() {
+// 清空购物车（逐个删除）
+async function clearCart() {
   if (confirm('确定要清空购物车吗？')) {
+    for (const item of cartItems.value) {
+      await cartApi.remove(item.id)
+    }
     cartItems.value = []
-    saveCart()
   }
 }
 
@@ -172,6 +187,14 @@ onMounted(() => {
     <!-- 加载中 -->
     <div v-if="loading" class="loading-state">
       <p>加载中...</p>
+    </div>
+
+    <!-- 未登录 -->
+    <div v-else-if="!user.isLogin" class="empty-cart">
+      <div class="empty-icon">🔒</div>
+      <p class="empty-text">您还未登录</p>
+      <p class="empty-sub">登录后可查看购物车并下单</p>
+      <button class="go-shop-btn" @click="router.push('/login')">去登录</button>
     </div>
 
     <!-- 购物车为空 -->

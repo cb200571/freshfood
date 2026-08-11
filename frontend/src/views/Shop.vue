@@ -39,10 +39,15 @@ async function loadTopCategories() {
     // 默认选第一个或从 URL 参数获取
     const urlCatId = route.query.cat
     const target = urlCatId ? result.data.find(c => c.id == urlCatId) : null
+    // 是否处于"搜索跳转"场景：如果是搜索进来的，默认分类不加载商品，避免覆盖搜索结果
+    const isSearchEntry = !!route.query.keyword
+
     if (target) {
-      selectTopCat(target.id)
+      // URL 指定了分类：正常加载该分类的商品（搜索场景则只选分类不加载）
+      selectTopCat(target.id, !isSearchEntry)
     } else if (result.data.length > 0) {
-      selectTopCat(result.data[0].id)
+      // 没有指定分类：默认选第一个，正常加载商品（搜索场景跳过）
+      selectTopCat(result.data[0].id, !isSearchEntry)
     }
   } catch (e) {
     console.error('加载分类失败:', e)
@@ -50,7 +55,7 @@ async function loadTopCategories() {
 }
 
 // 点击一级分类
-async function selectTopCat(parentId) {
+async function selectTopCat(parentId, loadProducts = true) {
   currentParentId.value = parentId
   currentCatId.value = null
 
@@ -61,8 +66,11 @@ async function selectTopCat(parentId) {
       subCategories.value = result.data
     }
 
-    // 加载该一级分类下所有商品
-    loadProductsByParent(parentId)
+    // 是否加载该一级分类下所有商品
+    // 搜索场景下 loadProducts=false，只展示分类不加载商品，避免覆盖搜索结果
+    if (loadProducts) {
+      loadProductsByParent(parentId)
+    }
   } catch (e) {
     console.error('加载二级分类失败:', e)
   }
@@ -208,7 +216,15 @@ function logout() {
 }
 
 onMounted(() => {
+  // 无论从哪个入口进入，都先加载一级/二级分类，保证布局一致
   loadTopCategories()
+
+  // 如果 URL 带了 keyword 参数（从首页搜索跳转过来），再额外执行搜索
+  const urlKeyword = route.query.keyword
+  if (urlKeyword) {
+    searchKeyword.value = urlKeyword
+    doSearch()
+  }
 })
 </script>
 

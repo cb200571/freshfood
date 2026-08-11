@@ -109,11 +109,11 @@
             <div class="row mb-3">
               <div class="col-6">
                 <label class="form-label">开始时间</label>
-                <input v-model="form.startTime" class="form-control" type="datetime-local">
+                <DateTimeInput v-model="form.startTime" />
               </div>
               <div class="col-6">
                 <label class="form-label">结束时间</label>
-                <input v-model="form.endTime" class="form-control" type="datetime-local">
+                <DateTimeInput v-model="form.endTime" />
               </div>
             </div>
           </div>
@@ -129,6 +129,8 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import DateTimeInput from '@/components/DateTimeInput.vue'
+import { toISO } from '@/utils/datetime.js'
 
 const activityList = ref([])
 const spuList = ref([])     // 所有商品（SPU）
@@ -209,7 +211,12 @@ const submitActivity = async () => {
   const res = await fetch('/api/seckill/create', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(form.value)
+    // 日期时间支持手填，提交前统一转成后端格式
+    body: JSON.stringify({
+      ...form.value,
+      startTime: toISO(form.value.startTime),
+      endTime: toISO(form.value.endTime),
+    })
   }).then(r => r.json())
   if (res.code === 200) {
     alert('创建成功')

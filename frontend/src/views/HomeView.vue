@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { categoryApi, productApi, seckillApi } from '@/api'
+import { categoryApi, productApi, seckillApi, cartApi } from '@/api'
 import { useUserStore } from '@/stores/user'
 import TabBar from '@/components/TabBar.vue'
 
@@ -15,7 +15,7 @@ const cartCount = ref(0)
 const loading = ref(true)
 const toastShow = ref(false)
 const toastMsg = ref('')
-
+const currentProducts = ref([])
 // 大类颜色数组
 const catColors = [
   'linear-gradient(135deg,#a8edea,#fed6e3)',
@@ -71,25 +71,69 @@ const products = ref([])
 // 秒杀活动
 const seckillActivities = ref([])
 
-// 购物车
-const cart = ref([])
-
 const showToast = (msg) => {
   toastMsg.value = msg
   toastShow.value = true
   setTimeout(() => { toastShow.value = false }, 1600)
 }
 
-const addCart = (p) => {
-  cart.value.push(p)
-  cartCount.value = cart.value.length
-  localStorage.setItem('cart', JSON.stringify(cart.value))
-  showToast(`✅ 已加入购物车：${p.name.substring(0, 8)}...`)
+// 加载购物车数量（角标显示）
+async function loadCartCount() {
+  if (!user.userId) {
+    cartCount.value = 0
+    return
+  }
+  try {
+    const res = await cartApi.list(user.userId)
+    if (res.code === 200) {
+      cartCount.value = (res.data || []).reduce((sum, item) => sum + item.quantity, 0)
+    }
+  } catch (e) {
+    console.error('加载购物车数量失败', e)
+  }
+}
+
+const addCart = async (p) => {
+  // 未登录用户提示先登录
+  if (!user.userId) {
+    alert('请先登录')
+    router.push('/login')
+    return
+  }
+  try {
+    // 首页商品只有 spu 信息，需先查它的 SKU 列表，取第一个 SKU
+    const skuRes = await productApi.getSkus(p.id)
+    if (skuRes.code !== 200 || !skuRes.data || skuRes.data.length === 0) {
+      alert('该商品暂无库存')
+      return
+    }
+    const firstSku = skuRes.data[0]
+    // 调后端加购
+    const res = await cartApi.add({
+      userId: user.userId,
+      skuId: firstSku.id,
+      spuId: p.id,
+      quantity: 1
+    })
+    if (res.code === 200) {
+      // 更新购物车角标
+      loadCartCount()
+      showToast(`✅ 已加入购物车：${p.name.substring(0, 8)}...`)
+    } else {
+      alert('加入购物车失败：' + (res.message || '未知错误'))
+    }
+  } catch (e) {
+    console.error('加购失败', e)
+    alert('加入购物车失败')
+  }
 }
 
 const doSearch = () => {
-  if (!keyword.value.trim()) return
-  router.push(`/shop?q=${encodeURIComponent(keyword.value.trim())}`)
+  const searchKeyword = keyword.value.trim()
+  if (!searchKeyword) return
+  // 跳转到商品列表页，并携带搜索关键词
+  // Shop 页 onMounted 时会读取 URL 里的 keyword 参数并自动搜索
+  router.push({ path: '/shop', query: { keyword: searchKeyword } })
 }
 const goDetail = (p) => {
   router.push(`/product/${p.id}`)  // ✅ 跳转到商品详情页
@@ -100,12 +144,8 @@ const goProfile = () => {
 }
 
 onMounted(() => {
-  // 读取购物车
-  const savedCart = localStorage.getItem('cart')
-  if (savedCart) {
-    cart.value = JSON.parse(savedCart)
-    cartCount.value = cart.value.length
-  }
+  // 从后端加载购物车数量（角标）
+  loadCartCount()
 
   // 加载数据
   loadData()
